@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Login Processed</title>
+</head>
+<body>
+    <p>Authentication successful. You can close this window now.</p>
+    <script>
+        // Set a local storage item to notify the main window
+        localStorage.setItem('expa_login_success', Date.now().toString());
+
+        const dashboardUrl = "{% url 'dashboard' %}";
+
+        // Try opener method as fallback
+        if (window.opener && !window.opener.closed) {
+            try {
+                window.opener.postMessage('EXPA_OAUTH_SUCCESS', '*');
+                window.opener.location.href = dashboardUrl;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Close the popup after a brief moment
+        setTimeout(() => {
+            window.close();
+        }, 100);
+    </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Select CRM</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 28px;
+        }
+        .header {
+            max-width: 1100px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            margin: 0;
+            font-size: 30px;
+        }
+        .subtitle {
+            margin: 8px 0 0;
+            color: rgba(248, 250, 252, 0.85);
+        }
+        .logout {
+            color: #0f172a;
+            background: #7dd3fc;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+        .grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+        }
+        .card {
+            background: rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .card h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .card p {
+            margin: 8px 0 0;
+            color: rgba(248, 250, 252, 0.88);
+        }
+        .btn {
+            margin-top: 18px;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+            color: #0f172a;
+            background: #22d3ee;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Select CRM</h1>
+            <div class="subtitle" style="line-height: 1.6;">
+                Logged in as <strong>{{ user_data.full_name|default:expa_email }}</strong><br>
+                <div style="font-size: 14px; opacity: 0.9;">Email: {{ expa_email }}</div>
+                
+                {% if user_data.home_lc %}
+                    <div style="margin-top: 4px;">
+                        Home LC: <strong>{{ user_data.home_lc.name }}</strong>
+                    </div>
+                {% endif %}
+
+                
+                {% if user_data.current_positions %}
+                    <div style="margin-top: 6px;">
+                        Current Position(s):
+                        {% for pos in user_data.current_positions %}
+                            <div style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 13px; margin-top: 4px; display: inline-block; margin-right: 4px;">
+                                <strong>{{ pos.title }}</strong> 
+                                {% if pos.function.name %} - {{ pos.function.name }}{% endif %}
+                                {% if pos.office.name %} ({{ pos.office.name }}){% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if user_data.current_experiences %}
+                    <div style="margin-top: 6px;">
+                        Current Experiences:
+                        {% for exp in user_data.current_experiences %}
+                            <span style="display: inline-block; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-size: 13px; margin: 2px 4px 0 0;">
+                                ID: {{ exp.id }} ({{ exp.type_name }})
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div style="margin-top: 8px; opacity: 0.7; font-size: 14px;">&mdash; choose one workspace.</div>
+            </div>
+        </div>
+        <a class="logout" id="logoutBtn" href="#" onclick="handleLogout(); return false;">Logout</a>
+    </div>
+
+    <script>
+        function handleLogout() {
+            document.getElementById('logoutBtn').innerText = "Logging out...";
+            // Open a tiny popup to trigger EXPA's sign out on their domain
+            const popup = window.open("https://auth.aiesec.org/users/sign_out", "_blank", "width=10,height=10,left=10000,top=10000");
+            
+            // Wait 1.2 seconds for EXPA to log out, close the popup, then redirect our app back to the login screen
+            setTimeout(() => {
+                if (popup) {
+                    try { popup.close(); } catch(e) {}
+                }
+                window.location.href = "{% url 'logout' %}";
+            }, 1200);
+        }
+    </script>
+
+    <div class="grid">
+        {% if 'ogv' in crm_links %}
+        <div class="card">
+            <div>
+                <h2>OGV</h2>
+                <p>Open Outgoing Global Volunteer CRM.</p>
+            </div>
+            <a class="btn" href="{{ crm_links.ogv }}" target="_blank" rel="noopener">Open OGV</a>
+        </div>
+        {% endif %}
+
+        {% if 'ogt' in crm_links %}
+        <div class="card">
+            <div>
+                <h2>OGT</h2>
+                <p>Open Outgoing Global Talent CRM.</p>
+            </div>
+            <a class="btn" href="{{ crm_links.ogt }}" target="_blank" rel="noopener">Open OGT</a>
+        </div>
+        {% endif %}
+
+        {% if 'igv' in crm_links %}
+        <div class="card">
+            <div>
+                <h2>IGV</h2>
+                <p>Open Incoming Global Volunteer CRM.</p>
+            </div>
+            <a class="btn" href="{{ crm_links.igv }}" target="_blank" rel="noopener">Open IGV</a>
+        </div>
+        {% endif %}
+
+        {% if 'igt' in crm_links %}
+        <div class="card">
+            <div>
+                <h2>IGT</h2>
+                <p>Open Incoming Global Talent CRM.</p>
+            </div>
+            <a class="btn" href="{{ crm_links.igt }}" target="_blank" rel="noopener">Open IGT</a>
+        </div>
+        {% endif %}
+
+        {% if 'b2b' in crm_links %}
+        <div class="card">
+            <div>
+                <h2>B2B</h2>
+                <p>Open Business-to-Business CRM.</p>
+            </div>
+            <a class="btn" href="{{ crm_links.b2b }}" target="_blank" rel="noopener">Open B2B</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

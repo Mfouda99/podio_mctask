@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LC CRM Login</title>
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(123, 97, 255, 0.35), transparent 38%),
+                radial-gradient(circle at 80% 25%, rgba(0, 153, 255, 0.28), transparent 36%),
+                radial-gradient(circle at 50% 80%, rgba(0, 204, 170, 0.22), transparent 40%),
+                #0f172a;
+            color: #f8fafc;
+            padding: 24px;
+        }
+
+        .card {
+            width: min(620px, 92vw);
+            border-radius: 24px;
+            padding: 42px 34px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 20px 50px rgba(2, 6, 23, 0.45);
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(32px, 5vw, 48px);
+            letter-spacing: 0.2px;
+        }
+
+        p {
+            margin: 0 0 28px;
+            font-size: 17px;
+            color: rgba(248, 250, 252, 0.9);
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            background: linear-gradient(90deg, #7dd3fc, #22d3ee);
+            cursor: pointer;
+            transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+            box-shadow: 0 10px 22px rgba(34, 211, 238, 0.35);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba(34, 211, 238, 0.42);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #status {
+            margin-top: 18px;
+            min-height: 22px;
+            font-size: 14px;
+            color: rgba(248, 250, 252, 0.95);
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Welcome to LC CRM</h1>
+        <p>Continue with EXPA to access your Podio workspace.</p>
+
+        <button id="loginButton" class="btn" type="button" onclick="openExpaLogin()">Login with EXPA</button>
+        <div id="status"></div>
+    </main>
+
+    <script>
+        const dashboardUrl = "{% url 'dashboard' %}";
+        const oauthUrl = "{% url 'oauth_redirect' %}";
+        const statusElement = document.getElementById('status');
+        const loginButton = document.getElementById('loginButton');
+        let popupWatcher = null;
+
+        // Clean up previous storage to ensure events trigger anew
+        localStorage.removeItem('expa_login_success');
+
+        // Listen for message from popup
+        window.addEventListener('message', (event) => {
+            if (event.data === 'EXPA_OAUTH_SUCCESS') {
+                window.location.href = dashboardUrl;
+            }
+        });
+
+        // Listen for storage change from popup (fallback across tabs/ngrok origins)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'expa_login_success') {
+                window.location.href = dashboardUrl;
+            }
+        });
+
+        function openExpaLogin() {
+            if (popupWatcher) {
+                clearInterval(popupWatcher);
+            }
+
+            const width = 560;
+            const height = 720;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+
+            const popup = window.open(
+                oauthUrl,
+                'EXPA Login',
+                `width=${width},height=${height},left=${left},top=${top}`
+            );
+
+            if (!popup) {
+                statusElement.textContent = 'Popup blocked. Please allow popups for this site and try again.';
+                return;
+            }
+
+            loginButton.disabled = true;
+            statusElement.textContent = 'Waiting for EXPA login...';
+
+            popupWatcher = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(popupWatcher);
+                    popupWatcher = null;
+                    loginButton.disabled = false;
+                    statusElement.textContent = 'Login popup closed.';
+                }
+            }, 500);
+        }
+    </script>
+</body>
+</html>
