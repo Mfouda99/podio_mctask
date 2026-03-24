@@ -7,6 +7,8 @@ urlpatterns = [
     path('login/', views.login_start, name='login_start'),
     path('login/oauth/', views.oauth_redirect, name='oauth_redirect'),
     path('login/callback/', views.callback, name='login_callback'),
+    path('login/post/', views.post_login_redirect, name='post_login_redirect'),
+    path('login/select-lc/', views.lc_select, name='lc_select'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('logout/', views.logout_view, name='logout'),
 ]
