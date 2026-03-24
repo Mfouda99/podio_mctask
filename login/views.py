@@ -3,6 +3,7 @@ import secrets
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+import re
 
 from django.conf import settings
 from django.http import HttpResponseBadRequest
@@ -26,6 +27,71 @@ def _get_oauth_redirect_uri(request):
 
 def home(request):
 	return render(request, 'login/home.html')
+
+
+def _get_or_fetch_user_data(request):
+	user_data = request.session.get('expa_user_data')
+	if user_data and 'current_positions' in user_data:
+		return user_data
+
+	access_token = request.session.get('expa_access_token')
+	if not access_token:
+		return {}
+
+	user_data = _get_current_person_profile(access_token) or {}
+	if user_data:
+		request.session['expa_user_data'] = user_data
+	return user_data
+
+
+def _requires_lc_selection(user_data):
+	for position in (user_data or {}).get('current_positions', []):
+		title = str(position.get('title') or '').lower()
+		role_name = str((position.get('role') or {}).get('name') or '').lower()
+		combined = f"{title} {role_name}"
+		words = set(re.findall(r'[a-z0-9&]+', combined))
+		if 'mcvp' in words or 'mcp' in words:
+			return True
+	return False
+
+
+@expa_login_required
+def post_login_redirect(request):
+	user_data = _get_or_fetch_user_data(request)
+	if _requires_lc_selection(user_data) and not request.session.get('selected_lc'):
+		return redirect('lc_select')
+	return redirect('dashboard')
+
+
+@expa_login_required
+def lc_select(request):
+	user_data = _get_or_fetch_user_data(request)
+	if not _requires_lc_selection(user_data):
+		request.session.pop('selected_lc', None)
+		return redirect('dashboard')
+
+	available_lcs = [{'value': 'tanta', 'label': 'Tanta'}]
+	valid_values = {item['value'] for item in available_lcs}
+	error = ''
+
+	if request.method == 'POST':
+		selected_lc = (request.POST.get('lc') or '').strip().lower()
+		if selected_lc not in valid_values:
+			error = 'Please select a valid LC.'
+		else:
+			request.session['selected_lc'] = selected_lc
+			return redirect('dashboard')
+
+	return render(
+		request,
+		'login/lc_select.html',
+		{
+			'expa_email': request.session.get('expa_email', ''),
+			'available_lcs': available_lcs,
+			'selected_lc': request.session.get('selected_lc', ''),
+			'error': error,
+		},
+	)
 
 
 def login_start(request):
@@ -89,7 +155,7 @@ def login_start(request):
 		if verified_email:
 			request.session['expa_email'] = verified_email
 
-		return redirect('dashboard')
+		return redirect('post_login_redirect')
 
 	if settings.EXPA_ACCESS_TOKEN:
 		verified_email = _extract_email_from_token(settings.EXPA_ACCESS_TOKEN)
@@ -118,7 +184,7 @@ def login_start(request):
 		request.session['expa_token_type'] = 'Bearer'
 		request.session['expa_email'] = verified_email
 		request.session['auth_mode'] = 'token_validation'
-		return redirect('dashboard')
+		return redirect('post_login_redirect')
 
 	return render(
 		request,
@@ -172,10 +238,18 @@ def callback(request):
 		'code': code,
 	}
 
-	token_response = _post_json(
-		f"{settings.GIS_AUTH_ENDPOINT}/oauth/token",
-		token_payload,
-	)
+	try:
+		token_response = _post_json(
+			f"{settings.GIS_AUTH_ENDPOINT}/oauth/token",
+			token_payload,
+		)
+	except URLError as exc:
+		return HttpResponseBadRequest(
+			f"Unable to reach EXPA auth server from this host. Details: {exc}. "
+			"If you are on PythonAnywhere free tier, outbound access to this domain may be blocked."
+		)
+	except (HTTPError, ValueError, json.JSONDecodeError) as exc:
+		return HttpResponseBadRequest(f"EXPA token exchange failed: {exc}")
 
 	access_token = token_response.get('access_token', '')
 	request.session['expa_access_token'] = access_token
@@ -203,14 +277,10 @@ def dashboard(request):
 		'b2b': 'https://podio.com/aiesecglobal/b2bim-task',
 	}
 
-	user_data = request.session.get('expa_user_data')
+	user_data = _get_or_fetch_user_data(request)
 
-	if not user_data or 'current_positions' not in user_data:
-		access_token = request.session.get('expa_access_token')
-		if access_token:
-			user_data = _get_current_person_profile(access_token)
-			if user_data:
-				request.session['expa_user_data'] = user_data
+	if _requires_lc_selection(user_data) and not request.session.get('selected_lc'):
+		return redirect('lc_select')
 
 	# Role-based CRM links filtering
 	crm_links = {}
@@ -218,7 +288,6 @@ def dashboard(request):
 	allowed_funcs = set()
 
 	if user_data and 'current_positions' in user_data:
-		import re
 		for pos in user_data['current_positions']:
 			title = str(pos.get('title') or '').lower()
 			role = str((pos.get('role') or {}).get('name') or '').lower()
