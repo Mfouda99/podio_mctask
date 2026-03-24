@@ -43,7 +43,7 @@ SECRET_KEY = 'django-insecure--9wg&-v-u^w%yn4pcj#39^i6@)qu)hh41ml1=4_ur-2do(=wl5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -142,7 +142,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GIS_AUTH_ENDPOINT = os.getenv('GIS_AUTH_ENDPOINT', 'https://auth.aiesec.org')
 AUTH_CLIENT_ID = os.getenv('AUTH_CLIENT_ID', '')
 AUTH_CLIENT_SECRET = os.getenv('AUTH_CLIENT_SECRET', '')
-AUTH_REDIRECT_URI = os.getenv('AUTH_REDIRECT_URI', 'http://127.0.0.1:8000/login/callback/')
+AUTH_REDIRECT_URI = os.getenv('AUTH_REDIRECT_URI', 'http://podiomctask-production.up.railway.app/login/callback/')
 EXPA_ACCESS_TOKEN = os.getenv('EXPA_ACCESS_TOKEN', '')
 PODIO_WORKSPACE_URL = os.getenv('PODIO_WORKSPACE_URL', 'https://podio.com/')
 PODIO_API_KEY = os.getenv('PODIO_API_KEY', '')
@@ -153,7 +153,7 @@ PODIO_LEADS_APP_TOKEN = os.getenv('PODIO_LEADS_APP_TOKEN', '')
 
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
-CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://podiomctask-production.up.railway.app']
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000000
 
